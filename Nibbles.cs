@@ -15,6 +15,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Reflection;
 
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
 namespace Nibbles.Bas
 {
     public enum Direction { Left, Right, Up, Down }
