@@ -167,8 +167,8 @@ namespace Nibbles.Bas
                             if (soundBuffer.Lock(0, bufferLength, out realBuffer1, out realBuffer1Length, out realBuffer2, out realBuffer2Length, DSBLOCK_ENTIREBUFFER) >= 0)
                             {
                                 bool unlocked = false;
-                                int fadeInSamples = 3 * SamplingRate / 1000;
-                                int fadeOutSamples = 7 * SamplingRate / 1000;
+                                int fadeInSamples = 18 * SamplingRate / 1000;
+                                int fadeOutSamples = 47 * SamplingRate / 1000;
                                 try
                                 {
                                     int bufferIndex = 0;
