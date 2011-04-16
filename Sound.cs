@@ -170,7 +170,7 @@ namespace Nibbles.Bas
                                 {
                                     int bufferIndex = 0;
                                     for (int n = 0; n < period * NumberOfChannels; n++)
-                                        Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, (short) (MaxAmplitude * Math.Sin(n * 2 * Math.PI / period)));
+                                        Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, (short) (MaxAmplitude * Math.Sin(n * Math.PI / period)));
                                 }
                                 finally
                                 {
