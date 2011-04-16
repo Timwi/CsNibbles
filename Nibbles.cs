@@ -13,8 +13,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyVersion("1.2.0.0")]
+[assembly: AssemblyFileVersion("1.2.0.0")]
 
 namespace Nibbles.Bas
 {
