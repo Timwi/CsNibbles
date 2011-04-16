@@ -36,10 +36,10 @@ namespace Nibbles.Bas
         // These probably should not be changed
         const int MinFrequency = 37;
         const int MaxFrequency = 32767;
-        const int BitsPerSample = 16;
+        const int BitsPerSamplePerChannel = 16;
         const int NumberOfChannels = 1;
         const int SamplingRate = 44100;
-        const int MaxAmplitude = (1 << (BitsPerSample - 1)) - 1;
+        const int MaxAmplitude = (1 << (BitsPerSamplePerChannel - 1)) - 1;
 
         IDirectSound directSoundDevice = null;
         DSBUFFERDESC soundBufferDescription;
@@ -67,7 +67,7 @@ namespace Nibbles.Bas
             waveFormat.cbSize = (short) Marshal.SizeOf(typeof(WAVEFORMATEX));
             waveFormat.wFormatTag = WAVE_FORMAT_PCM;
             waveFormat.nChannels = NumberOfChannels;
-            waveFormat.wBitsPerSample = BitsPerSample;
+            waveFormat.wBitsPerSample = BitsPerSamplePerChannel;
             waveFormat.nSamplesPerSec = SamplingRate;
             waveFormat.nBlockAlign = (short) (waveFormat.nChannels * waveFormat.wBitsPerSample / 8);
             waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
@@ -129,7 +129,8 @@ namespace Nibbles.Bas
             if (period < 1)
                 period = 1;
 
-            int bufferLength = period * BitsPerSample / 8;
+            int bufferSamples = duration * SamplingRate / 1000;
+            int bufferLength = bufferSamples * NumberOfChannels * BitsPerSamplePerChannel / 8;
 
             bool played = false;
 
@@ -159,28 +160,43 @@ namespace Nibbles.Bas
                         if (soundBuffer.SetFrequency(playFrequency) >= 0)
                         {
                             //
-                            // Write in the sinewave
+                            // Write in the faded sinewave
 
                             IntPtr realBuffer1, realBuffer2;
                             int realBuffer1Length, realBuffer2Length;
                             if (soundBuffer.Lock(0, bufferLength, out realBuffer1, out realBuffer1Length, out realBuffer2, out realBuffer2Length, DSBLOCK_ENTIREBUFFER) >= 0)
                             {
                                 bool unlocked = false;
+                                int fadeInSamples = 3 * SamplingRate / 1000;
+                                int fadeOutSamples = 7 * SamplingRate / 1000;
                                 try
                                 {
                                     int bufferIndex = 0;
-                                    for (int n = 0; n < period * NumberOfChannels; n++)
-                                        Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, (short) (MaxAmplitude * Math.Sin(n * Math.PI / period)));
+                                    for (int sample = 0; sample < bufferSamples; sample++)
+                                    {
+                                        var amplitude =
+                                            sample < fadeInSamples ? MaxAmplitude * sample / fadeInSamples :
+                                            sample >= bufferSamples - fadeOutSamples ? MaxAmplitude * (bufferSamples - sample - 1) / fadeOutSamples :
+                                            MaxAmplitude;
+                                        for (int channel = 0; channel < NumberOfChannels; channel++)
+                                            Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, (short) (amplitude * Math.Pow(Math.Sin(sample * 2 * Math.PI / period), 2.3)));
+                                    }
                                 }
                                 finally
                                 {
                                     unlocked = soundBuffer.Unlock(realBuffer1, realBuffer1Length, realBuffer2, realBuffer2Length) >= 0;
                                 }
 
-                                if (unlocked && soundBuffer.SetCurrentPosition(0) >= 0 && soundBuffer.Play(0, 0, DSBPLAY_LOOPING) >= 0)
+                                if (unlocked && soundBuffer.SetCurrentPosition(0) >= 0 && soundBuffer.Play(0, 0, 0) >= 0)
                                 {
                                     played = true;
-                                    Thread.Sleep(duration);
+                                    int status;
+                                    do
+                                    {
+                                        soundBuffer.GetStatus(out status);
+                                        Thread.Sleep(1);
+                                    }
+                                    while ((status & DSBSTATUS_PLAYING) != 0);
                                     soundBuffer.Stop();
                                 }
                             }
@@ -215,6 +231,7 @@ namespace Nibbles.Bas
         const int DSBCAPS_GLOBALFOCUS = 0x00008000;
 
         const int DSBPLAY_LOOPING = 0x00000001;
+        const int DSBSTATUS_PLAYING = 0x00000001;
 
         const int DSBLOCK_ENTIREBUFFER = 0x00000002;
 

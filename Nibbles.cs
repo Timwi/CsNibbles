@@ -82,7 +82,6 @@ namespace Nibbles.Bas
             try
             {
                 Beeper = new Beeper();
-                Beeper.Beep(1000, 1000);
 
                 bool isTrueTypeFont = WinAPI.IsOutputConsoleFontTrueType();
                 Console.Title = string.Format("C# Nibbles");
