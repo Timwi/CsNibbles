@@ -1,27 +1,31 @@
 ﻿/*
  * 
- *      The author waives all copyright to this source file.
- *      Treat it as effectively public domain.
+ *      The authors waive all rights to this source file.
+ *      It is public domain where permitted by law.
  * 
  */
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
 namespace Nibbles.Bas
 {
-    public enum Direction { Left, Right, Up, Down }
+    enum Direction { Left, Right, Up, Down }
 
-    public struct SnakePiece
+    struct SnakePiece
     {
         public int Row, Col;
     }
 
-    public struct Snake
+    struct Snake
     {
         public int Head;
         public int Length;
@@ -39,7 +43,7 @@ namespace Nibbles.Bas
     /// This type is used to represent the playing screen in memory. It is used to simulate graphics in text mode.
     /// Instead of the normal 80x25 text graphics using "█", we will use "▄" and "▀" to mimic an 80x50 pixel screen.
     /// </summary>
-    public struct Arena
+    struct Arena
     {
         /// <summary>Maps the 80×50 point into the real 80×25.</summary>
         public int RealRow;
@@ -49,7 +53,7 @@ namespace Nibbles.Bas
         public int Sister;
     }
 
-    public static class Nibbles
+    static class Nibbles
     {
         // Constants
         public const int MAXSNAKELENGTH = 1000;
@@ -64,7 +68,6 @@ namespace Nibbles.Bas
         public static int NumPlayers;
         public static int Speed;
         public static bool IncreaseSpeedDuringPlay;
-        public static bool Monochrome;
         public static int OriginalWindowWidth, OriginalWindowHeight;
 
         public static ConsoleColor Sammy, Jake, Walls, Background, DlgFore, DlgBack;
@@ -76,10 +79,10 @@ namespace Nibbles.Bas
             OriginalWindowWidth = Console.WindowWidth;
             OriginalWindowHeight = Console.WindowHeight;
 
-            Beeper = SoundManager.CreateBeeper(CreateBeeperHint.SpeakerSound);
-
             try
             {
+                Beeper = new Beeper();
+
                 bool isTrueTypeFont = WinAPI.IsOutputConsoleFontTrueType();
                 Console.Title = string.Format("C# Nibbles");
                 if (isTrueTypeFont)
@@ -91,6 +94,10 @@ namespace Nibbles.Bas
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.Clear();
+                Console.SetWindowSize(80, 25);
+                Console.SetBufferSize(80, 25);
+                Console.CursorVisible = false;
+
 
                 // INTRO
 
@@ -158,7 +165,7 @@ namespace Nibbles.Bas
                 }
                 while (!success || Speed < 1 || Speed > 100);
 
-                Speed = (int)((100 - Speed) * 2 + 10);
+                Speed = (int) ((100 - Speed) * 2 + 10);
 
                 string increase;
                 do

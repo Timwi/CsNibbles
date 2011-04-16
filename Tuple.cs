@@ -1,4 +1,10 @@
-﻿
+﻿/*
+ * 
+ *      The authors waive all rights to this source file.
+ *      It is public domain where permitted by law.
+ * 
+ */
+
 namespace Nibbles.Bas
 {
     public struct Tuple<T1, T2>

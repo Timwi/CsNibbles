@@ -1,89 +1,16 @@
-﻿
+﻿/*
+ * 
+ *      The authors waive all rights to this source file.
+ *      It is public domain where permitted by law.
+ * 
+ */
+
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace Nibbles.Bas
 {
-    public static class SoundManager
-    {
-        public static Beeper CreateBeeper(CreateBeeperHint hint)
-        {
-            // No sound desired, return silent beeper
-            if (hint == CreateBeeperHint.NoSound)
-                return new SilentBeeper();
-
-            // 64-bit Windows can't use speaker Beep, only option is DirectSound, whether it works or not
-            if (WinAPI.Is64BitOperatingSystem)
-                return new DirectSoundBeeper();
-
-            // If we want DirectSound, return it if it will work
-            if (hint == CreateBeeperHint.DirectSound)
-            {
-                DirectSoundBeeper beeper = new DirectSoundBeeper();
-                if (beeper.CanPlay)
-                    return beeper;
-
-                // Dispose is unnecessary because if it !CanPlay, it has no external resources
-                //  but it's here for show.
-                beeper.Dispose();
-            }
-
-            // The only option left is the speaker
-            return new SpeakerBeeper();
-        }
-    }
-
-    public enum CreateBeeperHint
-    {
-        NoSound,
-        DirectSound,
-        SpeakerSound,
-    }
-
-    public abstract class Beeper : IDisposable
-    {
-        ~Beeper()
-        {
-            Dispose();
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-        }
-
-        /// <summary>
-        /// Plays a beep sound.
-        /// </summary>
-        /// <param name="frequency">Frequency of the beep in Hz.</param>
-        /// <param name="duration">Duration of the beep in Ms.</param>
-        /// <returns>True if a sound was played.</returns>
-        public abstract bool Beep(int frequency, int duration);
-    }
-
-    public class SilentBeeper : Beeper
-    {
-        public override bool Beep(int frequency, int duration)
-        {
-            return false;
-        }
-    }
-
-    public class SpeakerBeeper : Beeper
-    {
-        public override bool Beep(int frequency, int duration)
-        {
-            return WinAPI.Beep(frequency, duration);
-        }
-    }
-
-
     /*
      * Translated to C# October, 2010
      * Tergiver (tergiver@msn.com)
@@ -100,8 +27,7 @@ namespace Nibbles.Bas
      * It will compile to, and run on, both x86 and x64 so you can target AnyCPU.
      * 
      */
-
-    public class DirectSoundBeeper : Beeper
+    public class Beeper : IDisposable
     {
         // Target frequency precision: less than 0.5% error
         //   37  Hz @ 44.1kHz sampling -> half-period of ~596 samples
@@ -113,17 +39,16 @@ namespace Nibbles.Bas
         const int BitsPerSample = 16;
         const int NumberOfChannels = 1;
         const int SamplingRate = 44100;
-        const int WaveScale = (1 << (BitsPerSample - 1)) - 1;
+        const int MaxAmplitude = (1 << (BitsPerSample - 1)) - 1;
 
         IDirectSound directSoundDevice = null;
         DSBUFFERDESC soundBufferDescription;
 
         const string DirectSoundModuleName = "dsound.dll";
 
-        public DirectSoundBeeper()
+        public Beeper()
         {
             // Silently fail DirectSound creation
-            //  CanPlay can be used to check if this will play sounds or not
 
             if (!WinAPI.ModuleContainsFunction(DirectSoundModuleName, "DirectSoundCreate", true, true))
                 return;
@@ -139,12 +64,12 @@ namespace Nibbles.Bas
             }
 
             WAVEFORMATEX waveFormat;
-            waveFormat.cbSize = (short)Marshal.SizeOf(typeof(WAVEFORMATEX));
+            waveFormat.cbSize = (short) Marshal.SizeOf(typeof(WAVEFORMATEX));
             waveFormat.wFormatTag = WAVE_FORMAT_PCM;
             waveFormat.nChannels = NumberOfChannels;
             waveFormat.wBitsPerSample = BitsPerSample;
             waveFormat.nSamplesPerSec = SamplingRate;
-            waveFormat.nBlockAlign = (short)(waveFormat.nChannels * waveFormat.wBitsPerSample / 8);
+            waveFormat.nBlockAlign = (short) (waveFormat.nChannels * waveFormat.wBitsPerSample / 8);
             waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
 
             // The wave format never changes so we marshal it to unmanaged memory and reuse it in calls
@@ -159,13 +84,17 @@ namespace Nibbles.Bas
             soundBufferDescription.lpwfxFormat = unmanagedWaveFormat;
         }
 
-        public bool CanPlay
+        ~Beeper()
         {
-            get { return directSoundDevice != null; }
+            // see comment in Dispose() for further info
+            Dispose();
         }
 
-        protected override void Dispose(bool disposing)
+        public void Dispose()
         {
+            // This doesn't follow the Microsoft Dispose pattern because that one sucks (http://nitoprograms.blogspot.com/2009/08/how-to-implement-idisposable-and.html)
+            // This also doesn't follow the Cleary's pattern because it's too much work.
+            // If an IDisposable field were added to this class, this code would need further work because of that, but until then this is acceptable.
             if (soundBufferDescription.lpwfxFormat != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(soundBufferDescription.lpwfxFormat);
@@ -178,10 +107,10 @@ namespace Nibbles.Bas
             }
         }
 
-        public override bool Beep(int freq, int duration)
+        public bool Beep(int freq, int duration)
         {
             if (directSoundDevice == null)
-                return false;
+                return WinAPI.Beep(freq, duration);
 
             // Clamp the frequency to the acceptable range
             if (freq < MinFrequency)
@@ -191,16 +120,16 @@ namespace Nibbles.Bas
 
             // 1/dwFreq = period of wave, in seconds
             // SAMPLING_RATE / dwFreq = samples per wave-period
-            int halfPeriod = SamplingRate * NumberOfChannels / (2 * freq);
+            int period = SamplingRate * NumberOfChannels / freq;
             // The above line introduces roundoff error, which at higher
             // frequencies is significant (>30% at the 32kHz,
             // easily above 1% in general, not good). We will fix this below.
 
             // If frequency too high, make sure it's not just a constant DC level
-            if (halfPeriod < 1)
-                halfPeriod = 1;
+            if (period < 1)
+                period = 1;
 
-            int bufferLength = 2 * halfPeriod * BitsPerSample / 8;
+            int bufferLength = period * BitsPerSample / 8;
 
             bool played = false;
 
@@ -214,31 +143,23 @@ namespace Nibbles.Bas
                     int playFrequency;
                     if (soundBuffer.GetFrequency(out playFrequency) >= 0)
                     {
-                        // When we set the half_period above, we rounded down, so if
+                        // When we set the period above, we rounded down, so if
                         // we play the buffer as is, it will sound higher frequency
                         // than it ought to be.
                         // To compensate, we should play the buffer at a slower speed.
                         // The slowdown factor is precisely the rounded-down period
                         // divided by the true period:
-                        //   half_period / [ SAMPLING_RATE * NUM_CHANNELS / (2*dwFreq) ]
-                        // = 2*dwFreq*half_period / (SAMPLING_RATE * NUM_CHANNELS)
+                        //   period / [ SAMPLING_RATE * NUM_CHANNELS / dwFreq ]
+                        // = dwFreq * period / (SAMPLING_RATE * NUM_CHANNELS)
                         //
                         // The adjusted frequency needs to be multiplied by this factor:
-                        //   play_freq *= 2*dwFreq*half_period / (SAMPLING_RATE * NUM_CHANNELS)
-                        // To do this computation (in a way that works on 32-bit machines),
-                        // we cannot multiply the numerator directly, since that may
-                        // cause rounding problems (44100 * 2*44100*1 ~ 3.9 billion which
-                        // is uncomfortable close to the upper limit of 4.3 billion).
-                        // Therefore, we use MulDiv to safely (and efficiently) avoid any
-                        // problems.
+                        //   play_freq *= dwFreq * period / (SAMPLING_RATE * NUM_CHANNELS)
 
-                        // [Tergiver] I simply cast to 64-bit long which works the same as MulDiv
-
-                        playFrequency = (int)((long)playFrequency * (long)(2 * freq * halfPeriod) / (long)(SamplingRate * NumberOfChannels));
+                        playFrequency = (int) ((long) playFrequency * ((long) freq * (long) period) / (long) (SamplingRate * NumberOfChannels));
                         if (soundBuffer.SetFrequency(playFrequency) >= 0)
                         {
                             //
-                            // Write in the square wave
+                            // Write in the sinewave
 
                             IntPtr realBuffer1, realBuffer2;
                             int realBuffer1Length, realBuffer2Length;
@@ -248,10 +169,8 @@ namespace Nibbles.Bas
                                 try
                                 {
                                     int bufferIndex = 0;
-                                    for (int n = 0; n < halfPeriod * NumberOfChannels; n++)
-                                        Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, -WaveScale);
-                                    for (int n = 0; n < halfPeriod * NumberOfChannels; n++)
-                                        Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, +WaveScale);
+                                    for (int n = 0; n < period * NumberOfChannels; n++)
+                                        Marshal.WriteInt16(realBuffer1, bufferIndex++ * 2, (short) (MaxAmplitude * Math.Sin(n * 2 * Math.PI / period)));
                                 }
                                 finally
                                 {
@@ -361,9 +280,5 @@ namespace Nibbles.Bas
         }
 
         #endregion
-    }
-
-    public static class Wow
-    {
     }
 }

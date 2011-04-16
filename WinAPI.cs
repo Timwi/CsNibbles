@@ -1,11 +1,17 @@
-﻿
+﻿/*
+ * 
+ *      The authors waive all rights to this source file.
+ *      It is public domain where permitted by law.
+ * 
+ */
+
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 namespace Nibbles.Bas
 {
-    internal static class WinAPI
+    static class WinAPI
     {
         const int TMPF_TRUETYPE = 0x4;
         const int LF_FACESIZE = 32;
