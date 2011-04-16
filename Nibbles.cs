@@ -7,16 +7,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Reflection;
-
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
 
 namespace Nibbles.Bas
 {
@@ -55,7 +49,7 @@ namespace Nibbles.Bas
         public int Sister;
     }
 
-    public static class Program
+    public static class Nibbles
     {
         // Constants
         public const int MAXSNAKELENGTH = 1000;
@@ -75,10 +69,14 @@ namespace Nibbles.Bas
 
         public static ConsoleColor Sammy, Jake, Walls, Background, DlgFore, DlgBack;
 
+        public static Beeper Beeper;
+
         public static void Main(string[] args)
         {
             OriginalWindowWidth = Console.WindowWidth;
             OriginalWindowHeight = Console.WindowHeight;
+
+            Beeper = SoundManager.CreateBeeper(CreateBeeperHint.SpeakerSound);
 
             try
             {
@@ -93,10 +91,6 @@ namespace Nibbles.Bas
                 Console.ForegroundColor = ConsoleColor.White;
                 Console.BackgroundColor = ConsoleColor.Black;
                 Console.Clear();
-                Console.SetWindowSize(80, 25);
-                Console.SetBufferSize(80, 25);
-                Console.CursorVisible = false;
-
 
                 // INTRO
 
@@ -164,7 +158,7 @@ namespace Nibbles.Bas
                 }
                 while (!success || Speed < 1 || Speed > 100);
 
-                Speed = (int) ((100 - Speed) * 2 + 10);
+                Speed = (int)((100 - Speed) * 2 + 10);
 
                 string increase;
                 do
@@ -229,6 +223,11 @@ namespace Nibbles.Bas
                 RestoreConsole();
                 Console.WriteLine(ex);
             }
+            finally
+            {
+                if (Beeper != null)
+                    Beeper.Dispose();
+            }
         }
 
         private static object MusicLock = new object();
@@ -257,9 +256,9 @@ namespace Nibbles.Bas
                         //if ((m.Groups[1].Value == ">" && MusicOctave == 6) || (m.Groups[1].Value == "<" && MusicOctave == 0))
                         //    throw new ArgumentException("Octave must be from 0 to 6.");
                         if (m.Groups[1].Value == ">")
-                            MusicOctave++;
+                            MusicOctave = Math.Min(6, MusicOctave + 1);
                         else
-                            MusicOctave--;
+                            MusicOctave = Math.Max(0, MusicOctave - 1);
                     }
                     else if ((m = Regex.Match(input, @"^\s*([abcdefg])\s*([#\+\-])?\s*(\.)?\s*", RegexOptions.Singleline | RegexOptions.IgnoreCase)).Success)
                     {
@@ -310,7 +309,7 @@ namespace Nibbles.Bas
                         if (act.Item1 == null)
                             Thread.Sleep(act.Item2);
                         else
-                            WinAPI.Beep(act.Item1.Value, act.Item2);
+                            Beeper.Beep(act.Item1.Value, act.Item2);
                 }
             });
             thread.Start();
@@ -352,6 +351,7 @@ namespace Nibbles.Bas
                 for (int col = 1; col <= 80; col++)
                     Arena[row, col].Color = Background;
 
+            Console.BackgroundColor = Background;
             Console.Clear();
 
             // Little trick: we can’t draw the bottom-right character cell without scrolling the screen up,
@@ -944,56 +944,6 @@ namespace Nibbles.Bas
         private static void ConsoleSetCursorPosition(int x, int y)
         {
             Console.SetCursorPosition(x - 1, y - 1);
-        }
-    }
-
-    static class WinAPI
-    {
-        const int TMPF_TRUETYPE = 0x4;
-        const int LF_FACESIZE = 32;
-        const int STD_INPUT_HANDLE = -10;
-        const int STD_OUTPUT_HANDLE = -11;
-        const int STD_ERROR_HANDLE = -12;
-
-        readonly static IntPtr InvalidHandleValue = new IntPtr(-1);
-
-        [DllImport("Kernel32.dll", SetLastError = true)]
-        extern static IntPtr GetStdHandle(int handle);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        extern static bool GetCurrentConsoleFontEx(IntPtr hConsoleOutput, bool bMaximumWindow, [In, Out] ref CONSOLE_FONT_INFOEX lpConsoleCurrentFont);
-
-        [DllImport("kernel32.dll")]
-        public extern static bool Beep(int freq, int dur);
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        struct CONSOLE_FONT_INFOEX
-        {
-            public int cbSize;
-            public int Index;
-            public short Width;
-            public short Height;
-            public int Family;
-            public int Weight;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = LF_FACESIZE)]
-            public string FaceName;
-        }
-
-        public static IntPtr GetOutputHandle()
-        {
-            IntPtr handle = GetStdHandle(STD_OUTPUT_HANDLE);
-            if (handle == InvalidHandleValue)
-                throw new Win32Exception();
-            return handle;
-        }
-
-        public static bool IsOutputConsoleFontTrueType()
-        {
-            CONSOLE_FONT_INFOEX cfi = new CONSOLE_FONT_INFOEX();
-            cfi.cbSize = Marshal.SizeOf(typeof(CONSOLE_FONT_INFOEX));
-            if (GetCurrentConsoleFontEx(GetOutputHandle(), false, ref cfi))
-                return (cfi.Family & TMPF_TRUETYPE) == TMPF_TRUETYPE;
-            return false;
         }
     }
 }
