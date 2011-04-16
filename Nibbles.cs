@@ -775,10 +775,10 @@ namespace Nibbles.Bas
             if (NumPlayers == 2)
             {
                 ConsoleSetCursorPosition(1, 1);
-                Console.Write(string.Format("{0:0,0}  Lives: {1}  <--JAKE", score2, lives2));
+                Console.Write(string.Format("{0,7}  Lives: {1}  <--JAKE", score2, lives2));
             }
             ConsoleSetCursorPosition(49, 1);
-            Console.Write(string.Format("SAMMY-->  Lives: {0}     {1:0,0}", lives1, score1));
+            Console.Write(string.Format("SAMMY-->  Lives: {0}     {1,7}", lives1, score1));
         }
 
         /// <summary>Sets row and column on playing field to given color to facilitate moving of snakes around the field.</summary>
