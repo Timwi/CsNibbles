@@ -1,8 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿﻿/*
+ * 
+ *      The authors waive all rights to this source file.
+ *      It is public domain where permitted by law.
+ * 
+ */
 
 namespace Nibbles
 {
