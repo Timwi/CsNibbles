@@ -249,7 +249,7 @@ namespace Nibbles.Bas
             {
                 var input = music;
                 Match m;
-                var actions = new List<Tuple<int?, int>>();
+                var actions = new List<NoteOrRest>();
                 while (input.Length > 0)
                 {
                     if ((m = Regex.Match(input, @"^\s*o\s*(\d+)\s*", RegexOptions.Singleline | RegexOptions.IgnoreCase)).Success)
@@ -281,7 +281,7 @@ namespace Nibbles.Bas
                         // ∴ 1/MusicTempo = number of minutes per quarter
                         // ∴ 60/MusicTempo = number of seconds per quarter
                         // ∴ 240/MusicTempo = number of seconds per whole note
-                        actions.Add(new Tuple<int?, int>((int) (440 * Math.Pow(2, MusicOctave + (double) (noteInOctave + 3) / 12)), (int) (240000 * times / MusicTempo / MusicNoteLength)));
+                        actions.Add(new NoteOrRest((int) (440 * Math.Pow(2, MusicOctave + (double) (noteInOctave + 3) / 12)), (int) (240000 * times / MusicTempo / MusicNoteLength)));
                         // WinAPI.Beep((int) (440 * Math.Pow(2, MusicOctave + (double) (noteInOctave + 3) / 12)), (int) (240000 * times / MusicTempo / MusicNoteLength));
                     }
                     else if ((m = Regex.Match(input, @"^\s*l\s*(\d+)\s*", RegexOptions.Singleline | RegexOptions.IgnoreCase)).Success)
@@ -296,7 +296,7 @@ namespace Nibbles.Bas
                         var len = Convert.ToInt32(m.Groups[1].Value);
                         if (len < 1)
                             throw new ArgumentException(string.Format("P: Length cannot be zero or negative.", len));
-                        actions.Add(new Tuple<int?, int>(null, (int) (240000 / MusicTempo / len)));
+                        actions.Add(new NoteOrRest(null, (int) (240000 / MusicTempo / len)));
                         // Thread.Sleep((int) (240000 / MusicTempo / len));
                     }
                     else if ((m = Regex.Match(input, @"^\s*t\s*(\d+)\s*", RegexOptions.Singleline | RegexOptions.IgnoreCase)).Success)
@@ -313,10 +313,10 @@ namespace Nibbles.Bas
                 lock (MusicLock)
                 {
                     foreach (var act in actions)
-                        if (act.Item1 == null)
-                            Thread.Sleep(act.Item2);
+                        if (act.Frequency == null)
+                            Thread.Sleep(act.DurationMs);
                         else
-                            Beeper.Beep(act.Item1.Value, act.Item2);
+                            Beeper.Beep(act.Frequency.Value, act.DurationMs);
                 }
             });
             thread.Start();
