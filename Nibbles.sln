@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nibbles", "Nibbles.csproj", "{D28EFD9B-155A-437B-805D-55D6BA7881A1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nibbles", "Src\Nibbles.csproj", "{D28EFD9B-155A-437B-805D-55D6BA7881A1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
